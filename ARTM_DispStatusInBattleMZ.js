@@ -6,6 +6,7 @@
 // ===================================================
 // [Version]
 // 1.0.0 初版
+// 1.0.1 不具合の原因となった不要処理を削除
 // ===================================================
 /*:ja
  * @target MZ
@@ -170,7 +171,6 @@
              this.dispStatus(target);
              return;
         }
-        _Game_Action_apply.call(this, target);
     };
 
     Game_Action.prototype.dispStatus = function(target) {
