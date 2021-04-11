@@ -8,6 +8,7 @@
 // 1.0.0 初版
 // 1.0.1 不具合の原因となった不要処理を削除
 // 1.1.0 表示内容にステートアイコンを追加
+// 1.1.1 ステートアイコン表示行数を1行⇒2行に変更
 // ===================================================
 /*:ja
  * @target MZ
@@ -83,15 +84,27 @@
         return this._iconSpacing;
     };
 
+    Window_StatusParamsEx.prototype.iconLineColNum = function() {
+        const iconWidth = ImageManager.iconWidth + this.iconSpacing();
+        const itemWidth = this.itemWidth() - this.iconSpacing();
+        return parseInt(itemWidth / iconWidth);
+    };
+
     Window_StatusParamsEx.prototype.drawAllItems = function() {
         Window_Selectable.prototype.drawAllItems.call(this);
-        const spacing = this.colSpacing();
         const rect = this.itemLineRect(this.maxItems() - 1);
-        const y = rect.bottom + this.iconSpacing();
+        const iconPitchH = ImageManager.iconWidth + this.colSpacing();
+        const iconPitchV = ImageManager.iconHeight + this.iconSpacing();
         let x = rect.left;
-        this._actor.allIcons().forEach(v => {
+        let y = rect.bottom + this.iconSpacing();
+        this._actor.allIcons().forEach((v, i) => {
             this.drawIcon(v, x, y);
-            x += ImageManager.iconWidth + spacing;
+            if (i === this.iconLineColNum() - 1) {
+                x = rect.left;
+                y += iconPitchV;
+            } else {
+                x += iconPitchH;
+            }
         });
     };
 
@@ -252,16 +265,17 @@
 
     Scene_Battle.prototype.createStatusParamsWindow = function() {
         const iconSpacing = 8;
-        const rect = this.statusParamsWindowRectEx(iconSpacing);
+        const iconRowMax = 2;
+        const rect = this.statusParamsWindowRectEx(iconSpacing, iconRowMax);
         this._statusParamsWindowEx = new Window_StatusParamsEx(rect);
         this._statusParamsWindowEx.visible = false;
         this._statusParamsWindowEx._iconSpacing = iconSpacing;
         this.addWindow(this._statusParamsWindowEx);
     };
 
-    Scene_Battle.prototype.statusParamsWindowRectEx = function(iconSpacing) {
+    Scene_Battle.prototype.statusParamsWindowRectEx = function(...args) {
         const ww = this.statusParamsWidth();
-        const wh = this.statusParamsHeight(iconSpacing);
+        const wh = this.statusParamsHeight(...arguments);
         const wx = Graphics.boxWidth - ww;
         const wy = 0;
         return new Rectangle(wx, wy, ww, wh);
@@ -271,13 +285,11 @@
         return 300;
     };
 
-    Scene_Battle.prototype.statusParamsHeight = function(iconSpacing) {
-        const iconRowCount = 1;
+    Scene_Battle.prototype.statusParamsHeight = function(...args) {
         const iconHeight = ImageManager.iconHeight;
         return(
             this.calcWindowHeight(9, false) +
-            ImageManager.iconHeight * iconRowCount.clamp(1, 2) +
-            iconSpacing * (iconRowCount + 1)
+            iconHeight * args[1] + args[0] * (args[1] + 1)
         );
     };
 
