@@ -7,6 +7,7 @@
 // [Version]
 // 1.0.0 初版
 // 1.0.1 不具合の原因となった不要処理を削除
+// 1.1.0 表示内容にステートアイコンを追加
 // ===================================================
 /*:ja
  * @target MZ
@@ -48,6 +49,7 @@
     Window_StatusParamsEx.prototype.initialize = function(rect) {
         Window_StatusBase.prototype.initialize.call(this, rect);
         this._actor = null;
+        this._iconSpacing = 0;
     };
 
     Window_StatusParamsEx.prototype.setActor = function(actor) {
@@ -77,6 +79,22 @@
         return [160, 60, 10];
     };
 
+    Window_StatusParamsEx.prototype.iconSpacing = function() {
+        return this._iconSpacing;
+    };
+
+    Window_StatusParamsEx.prototype.drawAllItems = function() {
+        Window_Selectable.prototype.drawAllItems.call(this);
+        const spacing = this.colSpacing();
+        const rect = this.itemLineRect(this.maxItems() - 1);
+        const y = rect.bottom + this.iconSpacing();
+        let x = rect.left;
+        this._actor.allIcons().forEach(v => {
+            this.drawIcon(v, x, y);
+            x += ImageManager.iconWidth + spacing;
+        });
+    };
+
     Window_StatusParamsEx.prototype.drawItem = function(index) {
         const rect = this.itemLineRect(index);
         if (index === 0) {
@@ -86,52 +104,53 @@
         }
     };
 
-    Window_StatusParamsEx.prototype.drawItemHeader = function(...args) {
-        const rect = args[1];
-        const index = args[0];
+    Window_StatusParamsEx.prototype.drawItemHeader = function(index, rect) {
         const paramId = index + this.maxItemsH();
         const value = this._actor.name();
-        const aw = this.itemsWidth();
-        const width = aw[0] + aw[1] + aw[2];
+        const isw = this.itemsWidth();
+        const width = isw[0] + isw[1] + isw[2];
         this.changeTextColor(ColorManager.textColor(6));
         this.drawText(value, rect.x, rect.y, width, "center");
     };
 
-    Window_StatusParamsEx.prototype.drawItemParam = function(...args) {
-        const rect = args[1];
-        const index = args[0] - this.maxItemsH();
-        const name = TextManager.param(index + 2);
-        const actor = this._actor;
-        const aw = this.itemsWidth();
+    Window_StatusParamsEx.prototype.drawItemParam = function(index, rect) {
+        const indexP = index - this.maxItemsH();
+        const name = TextManager.param(indexP + 2);
+        const width = this.itemsWidth()[0];
         this.changeTextColor(ColorManager.systemColor());
-        this.drawText(name, rect.x, rect.y, aw[0]);
-        if (index < this.maxItemsP()) {
-            const param = index + 2;
-            const value = actor.param(param);
-            this.selectTextColor(param);
-            this.drawTextEx(value, rect)
+        this.drawText(name, rect.x, rect.y, width);
+        if (indexP < this.maxItemsP()) {
+            this.drawItemParamH(indexP, rect);
         } else {
-            const param = index - this.maxItemsP();
-            const value = actor.xparam(param);
-            this.resetTextColor();
-            this.drawTextEx(value * 100, rect, "%");
+            this.drawItemParamP(indexP, rect);
         }
+    };
+
+    Window_StatusParamsEx.prototype.drawItemParamH = function(index, rect) {
+        const param = index + 2;
+        const value = this._actor.param(param);
+        this.selectTextColor(param);
+        this.drawTextEx(value, rect)
+    };
+
+    Window_StatusParamsEx.prototype.drawItemParamP = function(index, rect) {
+        const param = index - this.maxItemsP();
+        const value = this._actor.xparam(param);
+        this.resetTextColor();
+        this.drawTextEx(value * 100, rect, "%");
     };
 
     Window_StatusParamsEx.prototype.drawItemBackground = function(/*index*/) {
         //
     };
 
-    Window_StatusParamsEx.prototype.drawTextEx = function(...args) {
-        const value = args[0];
-        const rect = args[1];
-        const unit = args[2] || "";
-        const aw = this.itemsWidth();
-        const x = rect.x + aw[0];
+    Window_StatusParamsEx.prototype.drawTextEx = function(value, rect, unit) {
+        const isw = this.itemsWidth();
+        const x = rect.x + isw[0];
         const y = rect.y;
-        this.drawText(value, x, y, aw[1], "right");
-        if (unit + "" != "") {
-            const xx = x + aw[1] + 1;
+        this.drawText(value, x, y, isw[1], "right");
+        if ((unit || "") + "" != "") {
+            const xx = x + isw[1] + 1;
             this.drawText(unit, xx, y, 10, "left");
         }
     };
@@ -232,15 +251,17 @@
     };
 
     Scene_Battle.prototype.createStatusParamsWindow = function() {
-        const rect = this.statusParamsWindowRectEx();
+        const iconSpacing = 8;
+        const rect = this.statusParamsWindowRectEx(iconSpacing);
         this._statusParamsWindowEx = new Window_StatusParamsEx(rect);
         this._statusParamsWindowEx.visible = false;
+        this._statusParamsWindowEx._iconSpacing = iconSpacing;
         this.addWindow(this._statusParamsWindowEx);
     };
 
-    Scene_Battle.prototype.statusParamsWindowRectEx = function() {
+    Scene_Battle.prototype.statusParamsWindowRectEx = function(iconSpacing) {
         const ww = this.statusParamsWidth();
-        const wh = this.statusParamsHeight();
+        const wh = this.statusParamsHeight(iconSpacing);
         const wx = Graphics.boxWidth - ww;
         const wy = 0;
         return new Rectangle(wx, wy, ww, wh);
@@ -250,8 +271,14 @@
         return 300;
     };
 
-    Scene_Battle.prototype.statusParamsHeight = function() {
-        return this.calcWindowHeight(9, false);
+    Scene_Battle.prototype.statusParamsHeight = function(iconSpacing) {
+        const iconRowCount = 1;
+        const iconHeight = ImageManager.iconHeight;
+        return(
+            this.calcWindowHeight(9, false) +
+            ImageManager.iconHeight * iconRowCount.clamp(1, 2) +
+            iconSpacing * (iconRowCount + 1)
+        );
     };
 
 })();
